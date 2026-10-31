@@ -1,0 +1,1581 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>日本国憲法 全文検索・参照アプリ</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Vue.js 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts (Noto Serif JP & Noto Sans JP) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Noto+Serif+JP:wght@400;600;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Noto Sans JP"', 'sans-serif'],
+                        serif: ['"Noto Serif JP"', 'serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f4f6f9',
+                            100: '#e5e9f0',
+                            500: '#3b5998',
+                            800: '#1b2a4a',
+                            900: '#0f172a',
+                        },
+                        accent: {
+                            500: '#c0392b',
+                            600: '#a93226',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* カスタムハイライト */
+        mark.search-highlight {
+            background-color: #fef08a;
+            color: #854d0e;
+            padding: 0.1em 0.2em;
+            border-radius: 0.2em;
+            font-weight: 600;
+        }
+        .theme-dark mark.search-highlight {
+            background-color: #854d0e;
+            color: #fef08a;
+        }
+        /* セピアテーマ */
+        .theme-sepia {
+            background-color: #fbf0d9;
+            color: #433422;
+        }
+        .theme-sepia .card-bg {
+            background-color: #f4e4c1;
+            border-color: #e2d1a6;
+        }
+        .theme-sepia .header-bg {
+            background-color: #5c4033;
+            color: #fbf0d9;
+        }
+        /* スクロールバー */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.05);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0,0,0,0.2);
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans transition-colors duration-200 min-h-screen">
+
+<div id="app" :class="[themeClass, fontClass]" class="min-h-screen flex flex-col">
+
+    <!-- ヘッダー -->
+    <header class="bg-brand-900 text-white shadow-md sticky top-0 z-30 transition-colors header-bg">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center space-x-3 cursor-pointer" @click="resetFilters">
+                <div class="w-10 h-10 rounded-lg bg-accent-500 flex items-center justify-center font-serif text-xl font-bold text-white shadow">
+                    憲
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold font-serif tracking-wide leading-tight">日本国憲法</h1>
+                    <p class="text-xs text-slate-300 font-sans">全103条・前文 検索＆学習アプリ</p>
+                </div>
+            </div>
+
+            <!-- 右上コントロール（表示設定 & タブ） -->
+            <div class="flex items-center space-x-2 text-sm">
+                <!-- テーマ切り替え -->
+                <div class="flex bg-slate-800/80 rounded-lg p-1 border border-slate-700">
+                    <button @click="theme = 'light'" :class="{'bg-slate-600 text-white': theme === 'light', 'text-slate-400': theme !== 'light'}" class="px-2 py-1 rounded text-xs transition" title="ライトモード">
+                        <i class="fa-solid font-bold fa-sun"></i>
+                    </button>
+                    <button @click="theme = 'sepia'" :class="{'bg-amber-800 text-amber-100': theme === 'sepia', 'text-slate-400': theme !== 'sepia'}" class="px-2 py-1 rounded text-xs transition" title="和紙/セピア">
+                        <i class="fa-solid fa-book-open"></i>
+                    </button>
+                    <button @click="theme = 'dark'" :class="{'bg-indigo-600 text-white': theme === 'dark', 'text-slate-400': theme !== 'dark'}" class="px-2 py-1 rounded text-xs transition" title="ダークモード">
+                        <i class="fa-solid fa-moon"></i>
+                    </button>
+                </div>
+
+                <!-- フォントサイズ変更 -->
+                <div class="flex bg-slate-800/80 rounded-lg p-1 border border-slate-700 text-xs">
+                    <button @click="fontSize = 'sm'" :class="{'bg-slate-600 text-white': fontSize === 'sm'}" class="px-2 py-1 rounded">小</button>
+                    <button @click="fontSize = 'md'" :class="{'bg-slate-600 text-white': fontSize === 'md'}" class="px-2 py-1 rounded">中</button>
+                    <button @click="fontSize = 'lg'" :class="{'bg-slate-600 text-white': fontSize === 'lg'}" class="px-2 py-1 rounded">大</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- メインコンテンツ -->
+    <main class="max-w-6xl mx-auto w-full px-4 py-6 flex-1 flex flex-col md:flex-row gap-6">
+
+        <!-- サイドバー / フィルターナビゲーション -->
+        <aside class="w-full md:w-64 flex-shrink-0 space-y-4">
+
+            <!-- タブ切替ボタン -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-1.5 flex flex-col space-y-1 card-bg">
+                <button @click="activeTab = 'all'; selectedChapter = null" 
+                        :class="{'bg-brand-800 text-white font-medium': activeTab === 'all' && selectedChapter === null, 'text-slate-600 hover:bg-slate-100': !(activeTab === 'all' && selectedChapter === null)}"
+                        class="w-full text-left px-3 py-2 rounded-lg text-sm flex items-center justify-between transition">
+                    <span><i class="fa-solid fa-list-ul mr-2 w-4"></i>すべての条文</span>
+                    <span class="text-xs px-2 py-0.5 rounded-full bg-slate-200/60 text-slate-700 font-bold" :class="{'bg-white/20 text-white': activeTab === 'all' && selectedChapter === null}">104</span>
+                </button>
+                <button @click="activeTab = 'bookmarks'" 
+                        :class="{'bg-brand-800 text-white font-medium': activeTab === 'bookmarks', 'text-slate-600 hover:bg-slate-100': activeTab !== 'bookmarks'}"
+                        class="w-full text-left px-3 py-2 rounded-lg text-sm flex items-center justify-between transition">
+                    <span><i class="fa-solid fa-bookmark mr-2 text-amber-500 w-4"></i>お気に入り</span>
+                    <span class="text-xs px-2 py-0.5 rounded-full bg-slate-200/60 text-slate-700 font-bold" :class="{'bg-white/20 text-white': activeTab === 'bookmarks'}">{{ bookmarks.length }}</span>
+                </button>
+                <button @click="getRandomArticle" 
+                        class="w-full text-left px-3 py-2 rounded-lg text-sm flex items-center justify-between text-slate-600 hover:bg-slate-100 transition">
+                    <span><i class="fa-solid fa-dice mr-2 text-emerald-500 w-4"></i>ランダム表示</span>
+                    <i class="fa-solid fa-chevron-right text-xs opacity-50"></i>
+                </button>
+            </div>
+
+            <!-- 章から探す -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 card-bg">
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center justify-between">
+                    <span><i class="fa-solid fa-layer-group mr-1.5"></i>章別メニュー</span>
+                    <button v-if="selectedChapter !== null" @click="selectedChapter = null" class="text-xs text-brand-500 hover:underline">解除</button>
+                </h3>
+                <div class="space-y-1 max-h-[480px] overflow-y-auto pr-1">
+                    <button v-for="ch in chapters" :key="ch.id"
+                            @click="selectChapter(ch.id)"
+                            :class="{'bg-brand-50 border-l-4 border-brand-800 text-brand-900 font-semibold': selectedChapter === ch.id, 'text-slate-600 hover:bg-slate-50': selectedChapter !== ch.id}"
+                            class="w-full text-left px-2.5 py-2 rounded text-xs transition flex justify-between items-center">
+                        <span class="truncate">{{ ch.name }}</span>
+                        <span class="text-[10px] text-slate-400 ml-1 flex-shrink-0">{{ ch.range }}</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- クイック統計情報 / ミニ知識 -->
+            <div class="bg-gradient-to-br from-brand-800 to-slate-900 text-white rounded-xl p-4 shadow-sm text-xs space-y-2">
+                <div class="font-bold font-serif text-sm text-amber-300 flex items-center">
+                    <i class="fa-solid fa-lightbulb mr-2"></i>日本国憲法の三大原理
+                </div>
+                <ul class="list-disc list-inside text-slate-300 space-y-1">
+                    <li><strong class="text-white">国権在民（主権在民）</strong> - 前文、第1条</li>
+                    <li><strong class="text-white">基本的人権の尊重</strong> - 第11条〜第40条</li>
+                    <li><strong class="text-white">平和主義</strong> - 前文、第9条</li>
+                </ul>
+            </div>
+
+        </aside>
+
+        <!-- メイン一覧・検索エリア -->
+        <section class="flex-1 flex flex-col space-y-4">
+
+            <!-- 検索バー ＆ フィルター状態 -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 card-bg space-y-3">
+                <div class="relative">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input type="text" 
+                           v-model="searchQuery"
+                           placeholder="キーワード検索（例: 天皇、平和、人権、第9条、生存権 ...）"
+                           class="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition">
+                    <button v-if="searchQuery" @click="searchQuery = ''" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+
+                <!-- 検索結果カウント・絞り込みタグ表示 -->
+                <div class="flex flex-wrap items-center justify-between text-xs text-slate-500 gap-2">
+                    <div class="flex items-center space-x-2">
+                        <span>該当結果: <strong class="text-brand-800 text-sm font-bold">{{ filteredArticles.length }}</strong> 件</span>
+                        <span v-if="selectedChapter !== null" class="bg-brand-100 text-brand-800 px-2 py-0.5 rounded-full font-medium">
+                            章: {{ getChapterName(selectedChapter) }}
+                        </span>
+                        <span v-if="activeTab === 'bookmarks'" class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-medium">
+                            お気に入り保存中
+                        </span>
+                    </div>
+
+                    <div class="flex items-center space-x-2">
+                        <button @click="expandAll = !expandAll" class="text-slate-600 hover:text-slate-900 underline">
+                            {{ expandAll ? '全解説を閉じる' : '全解説を開く' }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 条文リスト -->
+            <div v-if="filteredArticles.length > 0" class="space-y-4">
+                <article v-for="article in filteredArticles" 
+                         :key="article.id" 
+                         :id="'article-' + article.id"
+                         class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 card-bg hover:shadow-md transition duration-150 relative">
+
+                    <!-- カードヘッダー -->
+                    <div class="flex items-start justify-between border-b border-slate-100 pb-3 mb-3 gap-2">
+                        <div>
+                            <span class="inline-block bg-slate-100 text-slate-600 text-[11px] font-semibold px-2.5 py-0.5 rounded-md mb-1">
+                                {{ article.chapterName }}
+                            </span>
+                            <h2 class="text-lg font-bold font-serif text-slate-900 flex items-center gap-2">
+                                <span>{{ article.title }}</span>
+                            </h2>
+                        </div>
+                        <div class="flex items-center space-x-1">
+                            <!-- コピーボタン -->
+                            <button @click="copyArticle(article)" 
+                                    class="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition"
+                                    title="文章をコピー">
+                                <i class="fa-regular fa-copy"></i>
+                            </button>
+                            <!-- ブックマークボタン -->
+                            <button @click="toggleBookmark(article.id)" 
+                                    :class="isBookmarked(article.id) ? 'text-amber-500' : 'text-slate-300 hover:text-amber-400'"
+                                    class="p-2 rounded-lg transition text-lg"
+                                    title="お気に入りに追加">
+                                <i :class="isBookmarked(article.id) ? 'fa-solid fa-bookmark' : 'fa-regular fa-bookmark'"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 本文表示（キーワードハイライト） -->
+                    <div class="font-serif leading-relaxed text-slate-800 mb-4 whitespace-pre-line"
+                         v-html="highlightText(article.content)">
+                    </div>
+
+                    <!-- タグ & 解説トグル -->
+                    <div class="flex flex-wrap items-center justify-between pt-2 border-t border-slate-100 gap-2">
+                        <div class="flex flex-wrap gap-1">
+                            <span v-for="tag in article.tags" :key="tag" 
+                                  @click="searchQuery = tag"
+                                  class="text-[11px] bg-slate-100 hover:bg-brand-50 text-slate-600 hover:text-brand-800 px-2 py-0.5 rounded cursor-pointer transition">
+                                #{{ tag }}
+                            </span>
+                        </div>
+                        <button v-if="article.summary" 
+                                @click="toggleSummary(article.id)"
+                                class="text-xs text-brand-500 hover:text-brand-800 font-medium flex items-center gap-1">
+                            <span><i class="fa-solid fa-circle-info"></i> ワンポイント解説</span>
+                            <i :class="isSummaryOpen(article.id) ? 'fa-chevron-up' : 'fa-chevron-down'" class="fa-solid text-[10px]"></i>
+                        </button>
+                    </div>
+
+                    <!-- アコーディオン解説エリア -->
+                    <div v-if="article.summary && isSummaryOpen(article.id)" 
+                         class="mt-3 p-3 bg-amber-50/70 border border-amber-200/70 rounded-lg text-xs text-amber-900 leading-relaxed font-sans">
+                        <div class="font-bold text-amber-950 mb-1 flex items-center">
+                            <i class="fa-solid fa-lightbulb text-amber-500 mr-1.5"></i>この条文のポイント・概要
+                        </div>
+                        {{ article.summary }}
+                    </div>
+
+                </article>
+            </div>
+
+            <!-- 検索該当なし時 -->
+            <div v-else class="bg-white rounded-xl shadow-sm border border-slate-200 p-12 text-center card-bg">
+                <i class="fa-solid fa-magnifying-glass-triangle-down text-4xl text-slate-300 mb-3"></i>
+                <h3 class="text-base font-bold text-slate-700">条件に一致する条文が見つかりませんでした</h3>
+                <p class="text-xs text-slate-500 mt-1">検索キーワードを変更するか、章フィルターを解除してください。</p>
+                <button @click="resetFilters" class="mt-4 px-4 py-2 bg-brand-800 text-white text-xs rounded-lg shadow hover:bg-brand-900 transition">
+                    検索条件をクリア
+                </button>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- コピートースト通知 -->
+    <div v-if="toastMessage" class="fixed bottom-5 right-5 bg-slate-900 text-white text-xs px-4 py-3 rounded-lg shadow-xl z-50 flex items-center space-x-2 animate-bounce">
+        <i class="fa-solid fa-circle-check text-emerald-400 text-base"></i>
+        <span>{{ toastMessage }}</span>
+    </div>
+
+    <!-- フッター -->
+    <footer class="bg-slate-900 text-slate-400 text-xs py-6 mt-12 border-t border-slate-800">
+        <div class="max-w-6xl mx-auto px-4 text-center space-y-2">
+            <p>日本国憲法（昭和21年憲法） 全文データ・学習アプリ</p>
+            <p class="text-slate-500">※本アプリは日本国憲法の原本条文に基づいて正確に検索・参照できるよう構築されています。</p>
+        </div>
+    </footer>
+
+</div>
+
+<script>
+const { createApp, ref, computed, onMounted, watch } = Vue;
+
+createApp({
+    setup() {
+        const searchQuery = ref('');
+        const selectedChapter = ref(null);
+        const activeTab = ref('all'); // 'all', 'bookmarks'
+        const theme = ref('light'); // 'light', 'sepia', 'dark'
+        const fontSize = ref('md'); // 'sm', 'md', 'lg'
+        const bookmarks = ref([]);
+        const openSummaries = ref([]);
+        const expandAll = ref(false);
+        const toastMessage = ref('');
+
+        // 章一覧データ
+        const chapters = [
+            { id: 0, name: "前文", range: "前文" },
+            { id: 1, name: "第1章 天皇", range: "第1条〜第8条" },
+            { id: 2, name: "第2章 戦争の放棄", range: "第9条" },
+            { id: 3, name: "第3章 国民の権利及び義務", range: "第10条〜第40条" },
+            { id: 4, name: "第4章 国会", range: "第41条〜第64条" },
+            { id: 5, name: "第5章 内閣", range: "第65条〜第75条" },
+            { id: 6, name: "第6章 司法", range: "第76条〜第82条" },
+            { id: 7, name: "第7章 財政", range: "第83条〜第91条" },
+            { id: 8, name: "第8章 地方自治", range: "第92条〜第95条" },
+            { id: 9, name: "第9章 改正", range: "第96条" },
+            { id: 10, name: "第10章 最高法規", range: "第97条〜第99条" },
+            { id: 11, name: "第11章 補則", range: "第100条〜第103条" },
+        ];
+
+        // 日本国憲法 全103条＋前文データ
+        const articles = [
+            {
+                id: 0,
+                chapterId: 0,
+                chapterName: "前文",
+                number: 0,
+                title: "日本国憲法 前文",
+                content: `日本国民は、正当に選挙された国会における代表者を通じて行動し、われらとわれらの子孫のために、全国民との協和による成果と、わが国全土にわたつて自由のもたらす恵沢を確保し、政府の行為によつて再び戦争の惨禍が起ることのないようにすることを決意し、主権が国民に存することを宣言し、この憲法を確定する。\n抑々主権は国民に存するものであり、この確信に基いて、われらはこの憲法を前文として採択する。\n国政は、国民の厳粛な信託によるものであつて、その権威は国民に由来し、その権力は国民の代表者がこれを行使し、その福利は国民がこれを享受する。\nこれは人類普遍の原理であり、この憲法は、かかる原理に基くものである。われらは、これに反する一切の憲法、法律、命令及び詔勅を排除する。\n日本国民は、恒久の平和を念願し、人間相互の関係を支配する崇高な理想を深く自覚するのであつて、平和を愛する諸国民の公正と信義に信頼して、われらの安全と生存を保持しようと決意した。\nわれらは、平和を維持し、専制と隷従、圧迫と偏狭を地上から永遠に除去しようと努めてゐる国際社会において、名誉ある地位を占めたいと思う。\nわれらは、全世界の国民が、ひとしく恐怖と欠乏から免かれ、平和のうちに生存する権利を有することを確認する。\nわれらは、いずれの国家も、自国のことのみに専念して他国を無視してはならないのであつて、政治道徳の法則は、普遍的なものであり、この法則に従うことは、自国の主権を維持し、他国と対等関係に立とうとする国家の責務であると信ずる。\n日本国民は、国家の名誉にかけ、全力をあげてこの崇高な理想と目的を達成することを誓う。`,
+                summary: "国権在民（主権在民）、恒久平和主義、基本的人権の尊重という憲法の3大原理を宣言しています。",
+                tags: ["国権在民", "主権在民", "平和主義", "国際協調", "三大原理"]
+            },
+            {
+                id: 1,
+                chapterId: 1,
+                chapterName: "第1章 天皇",
+                number: 1,
+                title: "第1条【天皇の地位・主権在民】",
+                content: "天皇は、日本国の象徴であり日本国民統合の象徴であつて、この地位は、主権の存する日本国民の総意に基く。",
+                summary: "天皇は政治的権力を持たない「象徴」であり、その地位の根拠は国民の総意にあります。",
+                tags: ["象徴天皇", "主権在民", "国民の総意"]
+            },
+            {
+                id: 2,
+                chapterId: 1,
+                chapterName: "第1章 天皇",
+                number: 2,
+                title: "第2条【皇位の継承】",
+                content: "皇位は、世襲のものであつて、国会の議決した皇室典範の定めるところにより、これを継承する。",
+                summary: "皇位は世襲制であり、具体的な継承ルールは皇室典範で定めます。",
+                tags: ["皇位継承", "世襲", "皇室典範"]
+            },
+            {
+                id: 3,
+                chapterId: 1,
+                chapterName: "第1章 天皇",
+                number: 3,
+                title: "第3条【天皇の国事行為に対する内閣の助言と承認】",
+                content: "天皇の国事に関するすべての行為には、内閣の助言と承認を必要とし、内閣が、その責任を負ふ。",
+                summary: "天皇の国事行為には内閣の「助言と承認」が必須であり、政治的責任は内閣が負います。",
+                tags: ["国事行為", "内閣の助言と承認", "内閣の責任"]
+            },
+            {
+                id: 4,
+                chapterId: 1,
+                chapterName: "第1章 天皇",
+                number: 4,
+                title: "第4条【天皇の権能の限界・国事行為の委任】",
+                content: "① 天皇は、この憲法の定める国事に関する行為のみを行い、国政に関する権能を有しない。\n② 天皇は、法律の定めるところにより、その国事に関する行為を委任することができる。",
+                summary: "天皇は国政を動かす政治権限を持たず、憲法に定められた形式的な国事行為のみを行います。",
+                tags: ["国政権能の否定", "国事行為", "委任"]
+            },
+            {
+                id: 5,
+                chapterId: 1,
+                chapterName: "第1章 天皇",
+                number: 5,
+                title: "第5条【摂政】",
+                content: "皇室典範の定めるところにより摂政を置くときは、摂政は、天皇の名でその国事に関する行為を行う。この法律には、前条第一項の規定を準用する。",
+                summary: "天皇が未成年や重病などの場合、代わりに国事行為を行う摂政を置きます。",
+                tags: ["摂政", "国事行為代行"]
+            },
+            {
+                id: 6,
+                chapterId: 1,
+                chapterName: "第1章 天皇",
+                number: 6,
+                title: "第6条【天皇の指名任命権】",
+                content: "① 天皇は、国会の指名に基いて、内閣総理大臣を任命する。\n② 天皇は、内閣の指名に基いて、最高裁判所長官を任命する。",
+                summary: "国会が指名した首相と、内閣が指名した最高裁長官を形式的に任命します。",
+                tags: ["内閣総理大臣任命", "最高裁判所長官任命"]
+            },
+            {
+                id: 7,
+                chapterId: 1,
+                chapterName: "第1章 天皇",
+                number: 7,
+                title: "第7条【天皇の国事行為】",
+                content: "天皇は、内閣の助言と承認により、国民のために、左の国事に関する行為を行う。\n一 憲法改正、法律、政令及び条約を公布すること。\n二 国会を召集すること。\n三 衆議院を解散すること。\n四 国会議員の総選挙の施行を公示すること。\n五 国務大臣及び法律の定めるその他の官吏の任免並びに全権委任状及び大使及び公使の信認状を認証すること。\n六 大赦、特赦、減刑、刑の執行の免除及び復権を認証すること。\n七 栄典を授与すること。\n八 批准書及び法律の定めるその他の外交文書を認証すること。\n九 外国の大使及び公使を受領すること。\n十 儀式を行うこと。",
+                summary: "天皇が行う10項目の形式的・儀礼的な国事行為（公布、国会召集、衆議院解散など）を具体的に定めています。",
+                tags: ["国事行為", "衆議院解散", "公布", "栄典授与"]
+            },
+            {
+                id: 8,
+                chapterId: 1,
+                chapterName: "第1章 天皇",
+                number: 8,
+                title: "第8条【皇室の財産授受】",
+                content: "皇室に財産を譲り渡し、又は皇室が、財産を譲り受け、若しくは賜与することは、国会の議決に基かなければならない。",
+                summary: "皇室の経済的行動・財産の授受には、国家によるコントロールのため国会の議決が必要です。",
+                tags: ["皇室財産", "国会の議決"]
+            },
+            {
+                id: 9,
+                chapterId: 2,
+                chapterName: "第2章 戦争の放棄",
+                number: 9,
+                title: "第9条【戦争の放棄・戦力不保持・交戦権の否認】",
+                content: "① 日本国民は、正義と秩序を基調とする国際平和を誠実に希求し、国権の発動たる戦争と、武力による威嚇又は武力の行使は、国際紛争を解決する手段としては、永久にこれを放棄する。\n② 前項の目的を達するため、陸海空軍その他の戦力は、これを保持しない。国の交戦権は、これを認めない。",
+                summary: "【憲法第9条】侵略戦争の放棄、武力行使の禁止、陸海空軍等の戦力不保持、交戦権の否認を定めた平和主義の核心部分です。",
+                tags: ["戦争放棄", "戦力不保持", "交戦権否認", "平和主義", "憲法9条"]
+            },
+            {
+                id: 10,
+                chapterId: 3,
+                chapterName: "第3章 国民の権利及び義務",
+                number: 10,
+                title: "第10条【国民の要件】",
+                content: "日本国民たる要件は、法律でこれを定める。",
+                summary: "日本人としての国籍要件は国籍法などの法律によって決められます。",
+                tags: ["国籍", "日本国民", "法律主義"]
+            },
+            {
+                id: 11,
+                chapterId: 3,
+                chapterName: "第3章 国民の権利及び義務",
+                number: 11,
+                title: "第11条【基本的人権の享受と不可侵性】",
+                content: "国民は、すべての基本的人権の享受を妨げられない。この憲法が国民に保障する基本的人権は、侵すことのできない永久の権利として、現在及び将来の国民に与へられる。",
+                summary: "基本的人権は誰にも侵されない永久の権利として全ての国民に保障されます。",
+                tags: ["基本的人権", "永久の権利", "不可侵"]
+            },
+            {
+                id: 12,
+                chapterId: 3,
+                chapterName: "第3章 国民の権利及び義務",
+                number: 12,
+                title: "第12条【自由・権利の保持義務と公共の福祉】",
+                content: "この憲法が国民に保障する自由及び権利は、国民の絶えざる努力によつて、これを保持しなければならない。又、国民は、これを濫用してはならないのであつて、常に公共の福祉のためにこれを利用する責任を負ふ。",
+                summary: "人権や自由は国民自身の努力で守るものであり、他人の権利を侵害しない「公共の福祉」に反して濫用してはなりません。",
+                tags: ["自由と権利", "公共の福祉", "権利の濫用防止"]
+            },
+            {
+                id: 13,
+                chapterId: 3,
+                chapterName: "第3章 国民の権利及び義務",
+                number: 13,
+                title: "第13条【個人の尊重・生命自由幸福追求権・公共の福祉】",
+                content: "すべて国民は、個人として尊重される。生命、自由及び幸福追求に対する国民の権利については、公共の福祉に反しない限り、立法その他の国政の上で、最大の尊重を必要とする。",
+                summary: "個人尊重とプライバシー権や自己決定権などの根拠となる「幸福追求権」を規定した人権の基本規定です。",
+                tags: ["個人の尊重", "幸福追求権", "プライバシー権", "自己決定権"]
+            },
+            {
+                id: 14,
+                chapterId: 3,
+                chapterName: "第3章 国民の権利及び義務",
+                number: 14,
+                title: "第14条【法の下の平等・貴族制度の禁止・栄典】",
+                content: "① すべて国民は、法の下に平等であつて、人種、信条、性別、社会的身分又は門地により、政治的、経済的又は社会的関係において、差別されない。\n② 華族その他の貴族の制度は、これを認めない。\n③ 誉章、勲章その他の栄典の授与は、いかなる特権も伴ハない。栄典の授与は、現にこれを有し、又は将来これを受ける者の一代に限り、その効力を有する。",
+                summary: "すべての人の法の下の平等を定め、性別や家柄等による差別や貴族階級の特権を禁止しています。",
+                tags: ["法の下の平等", "差別禁止", "貴族制度禁止", "栄典"]
+            },
+            {
+                id: 15,
+                chapterId: 3,
+                chapterName: "第3章 国民の権利及び義務",
+                number: 15,
+                title: "第15条【公務員の選定罷免権・全体の奉仕者・普通選挙】",
+                content: "① 公務員を選定し、及びこれを罷免することは、国民固有の権利である。\n② すべて公務員は、全体の奉仕者であつて、一部の奉仕者ではない。\n③ 公務員の選定については、成年者による普通選挙の保障を確定する。\n④ すべて選挙における投票の秘密は、これを侵してはならない。選挙人は、その選択につき公的にも私的にも責任を問ハれない。",
+                summary: "公務員は「全体の奉仕者」であり、選挙を通じて選んで辞めさせられる権利（参政権・秘密投票）を保障しています。",
+                tags: ["公務員", "全体の奉仕者", "参政権", "普通選挙", "秘密投票"]
+            },
+            {
+                id: 16,
+                chapterId: 3,
+                chapterName: "第3章 国民の権利及び義務",
+                number: 16,
+                title: "第16条【請願権】",
+                content: "何人も、損害の救済、公務員の罷免、法律、命令又は規則の制定、廃止又は改正その他の事項に関し、平穏に請願する権利を有し、何人も、かかる請願をしたためにいかなる差別待遇も受けない。",
+                summary: "国や自治体に対し害の救済や法令の改正などを平穏に要求（請願）できる権利です。",
+                tags: ["請願権", "要望"]
+            },
+            {
+                id: 17,
+                chapterId: 3,
+                chapterName: "第3章 国民の権利及び義務",
+                number: 17,
+                title: "第17条【国家賠償請求権】",
+                content: "何人も、公務員の違法な行為により、損害を受けたときは、法律の定めるところにより、国又は公共団体に、その賠償を求めることができる。",
+                summary: "公務員の違法行為で損害を受けた場合、国や自治体に賠償金を請求できます（国家賠償法）。",
+                tags: ["国家賠償請求権", "違法行為", "国賠法"]
+            },
+            {
+                id: 18,
+                chapterId: 3,
+                chapterName: "第3章 国民の権利及び義務",
+                number: 18,
+                title: "第18条【奴隷的拘束及び苦痛からの自由】",
+                content: "何人も、いかなる奴隷的拘束も受けない。又、犯罪による処罰たる場合を除いては、その意に反する苦役に服させられない。",
+                summary: "人体を他人に支配される奴隷的拘束や、意思に反する強制労働を禁止しています。",
+                tags: ["奴隷的拘束の禁止", "強制労働の禁止"]
+            },
+            {
+                id: 19,
+                chapterId: 3,
+                chapterName: "第3章 国民の権利及び義務",
+                number: 19,
+                title: "第19条【思想及び良心の自由】",
+                content: "思想及び良心の自由は、これを侵してはならない。",
+                summary: "人の心の中の考え、信条、倫理観は絶対的に自由であり、国家が制限してはなりません。",
+                tags: ["思想の自由", "良心の自由", "内心の自由"]
+            },
+            {
+                id: 20,
+                chapterId: 3,
+                chapterName: "第3章 国民の権利及び義務",
+                number: 20,
+                title: "第20条【信教の自由・政教分離】",
+                content: "① 信教の自由は、何人に対してもこれを保障する。いかなる宗教団体も、国から特権を受け、又は政治上の権力を行使してはならない。\n② 何人も、宗教上の行為、祝典、儀式又は行事に参加することを強制されない。\n③ 国及びその機関は、宗教教育その他いかなる宗教的活動もしてはならない。",
+                summary: "宗教を自由に信じる権利と、国家と宗教を厳格に分離する「政教分離の原則」を定めています。",
+                tags: ["信教の自由", "政教分離", "宗教的活動の禁止"]
+            },
+            {
+                id: 21,
+                chapterId: 3,
+                chapterName: "第3章 国民の権利及び義務",
+                number: 21,
+                title: "第21条【集会・結社・表現の自由、検閲の禁止、通信の秘密】",
+                content: "① 集会、結社及び言論、出版その他一切の表現の自由は、これを保障する。\n② 検閲は、これをしてはならない。通信の秘密は、これを侵してはならない。",
+                summary: "民主主義の根幹である表現の自由、集会の自由、検閲の絶対禁止、手紙やメールなどの通信の秘密を保障します。",
+                tags: ["表現の自由", "言論の自由", "検閲禁止", "通信の秘密", "集会の自由"]
+            },
+            {
+                id: 22,
+                chapterId: 3,
+                chapterName: "第3章 国民の権利及び義務",
+                number: 22,
+                title: "第22条【居住・移転・職業選択の自由、外国移住・国籍離脱の自由】",
+                content: "① 何人も、公共の福祉に反しない限り、居住、移転及び職業選択の自由を有する。\n② 何人も、外国に移住し、又は国籍を離脱する自由を侵されない。",
+                summary: "どこに住みどんな仕事を選ぶか（職業選択の自由）、外国へ移住する自由などを保障します。",
+                tags: ["職業選択の自由", "居住・移転の自由", "国籍離脱の自由"]
+            },
+            {
+                id: 23,
+                chapterId: 3,
+                chapterName: "第3章 国民の権利及び義務",
+                number: 23,
+                title: "第23条【学問の自由】",
+                content: "学問の自由は、これを保障する。",
+                summary: "学問研究、研究成果の発表、大学の自治などを政治的介入から守ります。",
+                tags: ["学問の自由", "研究の自由", "大学の自治"]
+            },
+            {
+                id: 24,
+                chapterId: 3,
+                chapterName: "第3章 国民の権利及び義務",
+                number: 24,
+                title: "第24条【家族生活における個人の尊厳と両性の平等】",
+                content: "① 婚姻は、両性の合意のみに基いて成立し、夫婦が同等の権利を有することを基本として、相互の協力により、維持されなければならない。\n② 配偶者の選択、財産権、相続、住居の選定、離婚並びに婚姻及び家族に関するその他の事項に関しては、法律は、個人の尊厳と両性の本質的平等に立脚して、制定されなければならない。",
+                summary: "結婚は当事者の合意のみで成立し、家族に関する法律は男女平等・個人の尊厳に基づいて作られるべきだと定めています。",
+                tags: ["婚姻の自由", "両性の平等", "個人の尊厳", "家族"]
+            },
+            {
+                id: 25,
+                chapterId: 3,
+                chapterName: "第3章 国民の権利及び義務",
+                number: 25,
+                title: "第25条【生存権・社会福祉等の推進】",
+                content: "① すべて国民は、健康で文化的な最低限度の生活を営む権利を有する。\n② 国は、すべての生活部面について、社会福祉、社会保障及び公衆衛生の向上及び増進に努めなければならない。",
+                summary: "【生存権】生活保護や社会保障制度の根拠となる「健康で文化的な最低限度の生活」を営む権利を定めています。",
+                tags: ["生存権", "最低限度の生活", "社会保障", "社会福祉", "憲法25条"]
+            },
+            {
+                id: 26,
+                chapterId: 3,
+                chapterName: "第3章 国民の権利及び義務",
+                number: 26,
+                title: "第26条【教育を受ける権利・受けさせる義務】",
+                content: "① すべて国民は、法律の定めるところにより、その能力に応じて、ひとしく教育を受ける権利を有する。\n② すべて国民は、法律の定めるところにより、その保護する子女に普通教育を受けさせる義務を負ふ。義務教育は、これを無償とする。",
+                summary: "教育を受ける権利と保護者の教育義務、および小中学校などの義務教育の無償化を定めています。",
+                tags: ["教育を受ける権利", "義務教育の無償", "教育の義務"]
+            },
+            {
+                id: 27,
+                chapterId: 3,
+                chapterName: "第3章 国民の権利及び義務",
+                number: 27,
+                title: "第27条【勤労の権利及び義務・労働条件の基準・児童労働の禁止】",
+                content: "① すべて国民は、勤労の権利を有し、義務を負ふ。\n② 賃金、就労時間、休息その他の勤労条件に関する基準は、法律でこれを定める。\n③ 児童は、これを酷使してはならない。",
+                summary: "働く権利と義務、労働基準法の根拠となる条件基準の設定、児童労働の禁止を規定しています。",
+                tags: ["勤労の権利", "勤労の義務", "労働条件基準", "児童虐待防止"]
+            },
+            {
+                id: 28,
+                chapterId: 3,
+                chapterName: "第3章 国民の権利及び義務",
+                number: 28,
+                title: "第28条【労働基本権（三権）】",
+                content: "勤労者の団結する権利及び団体交渉その他の団体行動をする権利は、これを保障する。",
+                summary: "労働者の三大権利（団結権・団体交渉権・ストライキ等の団体行動権）を保障しています。",
+                tags: ["労働三権", "団結権", "団体交渉権", "団体行動権"]
+            },
+            {
+                id: 29,
+                chapterId: 3,
+                chapterName: "第3章 国民の権利及び義務",
+                number: 29,
+                title: "第29条【財産権】",
+                content: "① 財産権は、これを侵してはならない。\n② 財産権の内容は、公共の福祉に適合するように、法律でこれを定める。\n③ 私有財産は、正当な補償の下に、これを公共のために用ひることができる。",
+                summary: "個人の財産権を守りつつ、土地収用など公共の目的のために利用する場合は正当な補償が必要と定めています。",
+                tags: ["財産権", "私有財産", "正当な補償", "公共の福祉"]
+            },
+            {
+                id: 30,
+                chapterId: 3,
+                chapterName: "第3章 国民の権利及び義務",
+                number: 30,
+                title: "第30条【納税の義務】",
+                content: "国民は、法律の定めるところにより、納税の義務を負ふ。",
+                summary: "国民の三大義務の一つである「税金を納める義務」を規定しています（租税法律主義）。",
+                tags: ["納税の義務", "三大義務", "税金"]
+            },
+            {
+                id: 31,
+                chapterId: 3,
+                chapterName: "第3章 国民の権利及び義務",
+                number: 31,
+                title: "第31条【適正手続きの保障（法定手続の保障）】",
+                content: "何人も、法律の定める手続によらなければ、その生命若しくは自由を奪ハれ、又はその他の刑罰を科せられない。",
+                summary: "罪を問うには法律に定められた適正な手続き（デュー・プロセス）が不可欠です。",
+                tags: ["法定手続の保障", "適正手続き", "デュープロセス"]
+            },
+            {
+                id: 32,
+                chapterId: 3,
+                chapterName: "第3章 国民の権利及び義務",
+                number: 32,
+                title: "第32条【裁判を受ける権利】",
+                content: "何人も、裁判所において裁判を受ける権利を奪はれない。",
+                summary: "誰でも権利を侵害された時に裁判所に訴えて公正な判断を求めることができます。",
+                tags: ["裁判を受ける権利", "司法アクセス"]
+            },
+            {
+                id: 33,
+                chapterId: 3,
+                chapterName: "第3章 国民の権利及び義務",
+                number: 33,
+                title: "第33条【逮捕の要件・令状主義】",
+                content: "何人も、現行犯として逮捕される場合を除いては、権限を有する司法官憲が発し、且つ理由となつてゐる犯罪を明示する令状によらなければ、逮捕されない。",
+                summary: "現行犯逮捕を除き、裁判官が発行する逮捕状（令状）なしでの逮捕を禁止しています。",
+                tags: ["逮捕の要件", "令状主義", "現行犯逮捕"]
+            },
+            {
+                id: 34,
+                chapterId: 3,
+                chapterName: "第3章 国民の権利及び義務",
+                number: 34,
+                title: "第34条【抑留・拘禁に対する保障・弁護人依頼権】",
+                content: "何人も、理由を直ちに告知され、且つ直ちに弁護人に依頼する権利を与へられなければ、抑留又は拘禁されない。又、何人も、正当な理由がなければ、拘禁されず、要求があれば、その理由は、本人及びその弁護人の出席する公開の法廷で直ちに示されなければならない。",
+                summary: "不当な身柄拘束を防ぎ、弁護士を呼ぶ権利や理由の開示を保障します。",
+                tags: ["抑留・拘禁", "弁護人依頼権", "理由開示"]
+            },
+            {
+                id: 35,
+                chapterId: 3,
+                chapterName: "第3章 国民の権利及び義務",
+                number: 35,
+                title: "第35条【住居の不可侵・捜索差押の要件】",
+                content: "① 何人も、その住居、書類及び所持品について、侵入、捜索及び押収を受けることのない権利は、第三十三条の場合を除いては、正当な理由に基づいて発せられ、且つ捜索する場所及び押収する物品を明示する令状によらなければ、侵されない。\n② 捜索又は押収は、権限を有する司法官憲が発する各別の令状によつて、これを行う。",
+                summary: "警察等のガサ入れ（家宅捜索や押収）には、個別具体的な捜索差押令状が必要です。",
+                tags: ["住居の不可侵", "捜索差押令状", "令状主義"]
+            },
+            {
+                id: 36,
+                chapterId: 3,
+                chapterName: "第3章 国民の権利及び義務",
+                number: 36,
+                title: "第36条【拷問及び残虐な刑罰の禁止】",
+                content: "公務員による拷問及び残虐な刑罰は、絶対にこれを禁止する。",
+                summary: "取調べでの拷問や、人道に反する残虐な刑罰は例外なく絶対禁止です。",
+                tags: ["拷問禁止", "残虐な刑罰の禁止", "絶対禁止"]
+            },
+            {
+                id: 37,
+                chapterId: 3,
+                chapterName: "第3章 国民の権利及び義務",
+                number: 37,
+                title: "第37条【刑事被告人の権利（迅速・公開裁判、証人審問、国選弁護人）】",
+                content: "① すべて刑事被告人は、公平な裁判所の迅速な公開裁判を受ける権利を有する。\n② 刑事被告人は、自己に有利な証人を審問する機会を充分に与へられ、又、公費で自己のために強制的に証人を求める権利を有する。\n③ 刑事被告人は、いかなる場合にも、資格を有する弁護人を依頼することができる。被告人が自らこれを依頼することができないときは、国でこれを付する。",
+                summary: "被告人が公平・迅速・公開の裁判を受け、国選弁護人をつける権利などを保障します。",
+                tags: ["迅速な裁判", "公開裁判", "国選弁護人", "証人審問権"]
+            },
+            {
+                id: 38,
+                chapterId: 3,
+                chapterName: "第3章 国民の権利及び義務",
+                number: 38,
+                title: "第38条【黙秘権・自白の証拠能力】",
+                content: "① 何人も、自己に不利益な自白を強要されない。\n② 強制、拷問若しくは脅迫による自白、又は不当に長い抑留若しくは拘禁の後の自白は、これを証拠とすることができない。\n③ 何人も、自己に不利益な唯一の証拠が本人の自白である場合には、有罪とされ、又は刑罰を科せられない。",
+                summary: "自分に不利な発言を拒む「黙秘権」と、脅迫で得た自白や自白のみによる有罪判決の禁止を定めています。",
+                tags: ["黙秘権", "自白の補強法則", "証拠能力の制限"]
+            },
+            {
+                id: 39,
+                chapterId: 3,
+                chapterName: "第3章 国民の権利及び義務",
+                number: 39,
+                title: "第39条【遡及処罰の禁止・一事不再理】",
+                content: "何人も、実行の時に適法であつた行為又は既に無罪とされた行為については、刑事上の責任を問ハれない。又、同一の犯罪について、重ねて刑事上の責任を問ハれない。",
+                summary: "後から作られた法律で昔の行為を処罰すること（遡及処罰）や、確定した事件の再度の処罰（一事不再理）を禁止します。",
+                tags: ["遡及処罰の禁止", "一事不再理", "二重処罰の禁止"]
+            },
+            {
+                id: 40,
+                chapterId: 3,
+                chapterName: "第3章 国民の権利及び義務",
+                number: 40,
+                title: "第40条【刑事補償請求権】",
+                content: "何人も、抑留又は拘禁された後、無罪の裁判を受けたときは、法律の定めるところにより、国にその補償を求めることができる。",
+                summary: "逮捕・拘留された後に裁判で無罪が確定した場合、拘束期間に応じた補償金を国に請求できます。",
+                tags: ["刑事補償", "無罪判決", "国家補償"]
+            },
+            {
+                id: 41,
+                chapterId: 4,
+                chapterName: "第4章 国会",
+                number: 41,
+                title: "第41条【国会の地位・最高機関・唯一の立法機関】",
+                content: "国会は、国権の最高機関であつて、国の唯一の立法機関である。",
+                summary: "国会が国の最高機関であり、法律を作ることができる唯一の機関であることを規定しています。",
+                tags: ["国会", "国権の最高機関", "唯一の立法機関"]
+            },
+            {
+                id: 42,
+                chapterId: 4,
+                chapterName: "第4章 国会",
+                number: 42,
+                title: "第42条【両議院制】",
+                content: "国会は、衆議院及び参議院の両議院でこれを構成する。",
+                summary: "日本の国会が「衆議院」と「参議院」の二院制（二院制）であることを定めています。",
+                tags: ["両議院制", "二院制", "衆議院", "参議院"]
+            },
+            {
+                id: 43,
+                chapterId: 4,
+                chapterName: "第4章 国会",
+                number: 43,
+                title: "第43条【両議院の構成・代表】",
+                content: "① 両議院は、全国民を代表する選挙された議員でこれを構成する。\n② 両議院の議員の定数は、法律でこれを定める。",
+                summary: "国会議員は一部の地域や利益団体ではなく「全国民の代表」です。",
+                tags: ["国民の代表", "議員定数", "選挙"]
+            },
+            {
+                id: 44,
+                chapterId: 4,
+                chapterName: "第4章 国会",
+                number: 44,
+                title: "第44条【議員及び選挙人の資格の平等】",
+                content: "両議院の議員及びその選挙人の資格は、法律でこれを定める。但し、人種、信条、性別、社会的身分、門地、教育、資産又は収入によつて差別してはならない。",
+                summary: "立候補者や投票者の資格において、性別や資産などによる差別を禁止しています。",
+                tags: ["選挙権の平等", "資格差別禁止"]
+            },
+            {
+                id: 45,
+                chapterId: 4,
+                chapterName: "第4章 国会",
+                number: 45,
+                title: "第45条【衆議院議員の任期】",
+                content: "衆議院議員の任期は、四年とする。但し、衆議院解散の場合には、その期間満了前に終了する。",
+                summary: "衆議院議員の任期は4年ですが、途中での解散があればその時点で終了します。",
+                tags: ["衆議院議員", "任期4年", "解散"]
+            },
+            {
+                id: 46,
+                chapterId: 4,
+                chapterName: "第4章 国会",
+                number: 46,
+                title: "第46条【参議院議員の任期】",
+                content: "参議院議員の任期は、六年とし、三年ごとに議員の半数を改選する。",
+                summary: "参議院議員の任期は6年で解散はなく、3年ごとに半数ずつ改選されます。",
+                tags: ["参議院議員", "任期6年", "半数改選"]
+            },
+            {
+                id: 47,
+                chapterId: 4,
+                chapterName: "第4章 国会",
+                number: 47,
+                title: "第47条【選挙に関する事項の法律主義】",
+                content: "選挙区、投票の方法その他両議院の議員の選挙に関する事項は、法律でこれを定める。",
+                summary: "選挙制度の詳細は公職選挙法などの法律で決められます。",
+                tags: ["公職選挙法", "選挙区", "投票方法"]
+            },
+            {
+                id: 48,
+                chapterId: 4,
+                chapterName: "第4章 国会",
+                number: 48,
+                title: "第48条【両議院の議員の兼職禁止】",
+                content: "何人も、同時に両議院の議員たることはできない。",
+                summary: "衆議院議員と参議院議員を兼ねることはできません。",
+                tags: ["兼職禁止", "二院制"]
+            },
+            {
+                id: 49,
+                chapterId: 4,
+                chapterName: "第4章 国会",
+                number: 49,
+                title: "第49条【歳費受領権】",
+                content: "両議院の議員は、法律の定めるところにより、国庫から相当の歳費を受ける。",
+                summary: "国会議員は独立した活動のために国から給与（歳費）を受け取ります。",
+                tags: ["歳費", "議員給与"]
+            },
+            {
+                id: 50,
+                chapterId: 4,
+                chapterName: "第4章 国会",
+                number: 50,
+                title: "第50条【不逮捕特権】",
+                content: "両議院の議員は、法律の定める場合を除いては、国会の会期中逮捕されず、会期前に逮捕された議員は、その議院の要求があれば、会期中釈放されなければならない。",
+                summary: "国会の審議を保障するため、議員は会期中の逮捕から守られます（不逮捕特権）。",
+                tags: ["不逮捕特権", "会期中"]
+            },
+            {
+                id: 51,
+                chapterId: 4,
+                chapterName: "第4章 国会",
+                number: 51,
+                title: "第51条【免責特権】",
+                content: "両議院の議員は、議院で行つた演説、討論又は表決について、院外で責任を問ハれない。",
+                summary: "自由な議論を促すため、議会内での発言や投票について法的な責任を外で問われません。",
+                tags: ["免責特権", "自由な議論"]
+            },
+            {
+                id: 52,
+                chapterId: 4,
+                chapterName: "第4章 国会",
+                number: 52,
+                title: "第52条【常会（通常国会）】",
+                content: "国会の常会は、毎年一回これを召集する。",
+                summary: "毎年1回、定期的に開かれる「通常国会（常会）」について定めています。",
+                tags: ["通常国会", "常会", "毎年1回"]
+            },
+            {
+                id: 53,
+                chapterId: 4,
+                chapterName: "第4章 国会",
+                number: 53,
+                title: "第53条【臨時会（臨時国会）】",
+                content: "内閣は、国会の臨時会の召集を決定することができる。いづれかの議院の総議員の四分の一以上の要求があれば、内閣は、その召集を決定しなければならない。",
+                summary: "内閣の判断、またはどちらかの議院の1/4以上の要求で開かれる臨時国会についてです。",
+                tags: ["臨時国会", "臨時会", "召集要求"]
+            },
+            {
+                id: 54,
+                chapterId: 4,
+                chapterName: "第4章 国会",
+                number: 54,
+                title: "第54条【衆議院解散後の特別会・参議院の緊急集会】",
+                content: "① 衆議院が解散されたときは、解散の日から四十日以内に、衆議院議員の総選挙を行い、その選挙の日から三十日以内に、国会を召集しなければならない。\n② 衆議院が解散されたときは、参議院は、同時に閉会となる。但し、内閣は、国に緊急の必要があるときは、参議院の緊急集会を求めることができる。\n③ 前項但書の緊急集会において採られた措置は、臨時のものであつて、次の国会開会の後十日以内に、衆議院の同意がない場合には、その効力を失ふ。",
+                summary: "解散後の総選挙・特別国会の期日と、緊急時に参議院のみで開催する「緊急集会」を規定しています。",
+                tags: ["総選挙", "特別国会", "参議院の緊急集会"]
+            },
+            {
+                id: 55,
+                chapterId: 4,
+                chapterName: "第4章 国会",
+                number: 55,
+                title: "第55条【議員資格の裁判】",
+                content: "両議院は、各々その議員の資格に関する争いを裁判する。但し、議員の議席を失ハせるには、出席議員の三分の二以上の多数による議決を必要とする。",
+                summary: "議員の資格に問題があるかの判断は議会自身が行います（特別多数3/2が必要）。",
+                tags: ["資格審査", "特別多数"]
+            },
+            {
+                id: 56,
+                chapterId: 4,
+                chapterName: "第4章 国会",
+                number: 56,
+                title: "第56条【定足数・表決】",
+                content: "① 両議院は、各々その総議員の三分の一以上の出席がなければ、議事を開き議決することができない。\n② 両議院の議事は、この憲法に特別の定のある場合を除いては、出席議員の過半数でこれを決め、可否同数のときは、議長の決するところによる。",
+                summary: "会議を開く条件（総議員の1/3以上）と、通常の決議ルール（出席者の過半数）を規定しています。",
+                tags: ["定足数", "過半数", "可否同数"]
+            },
+            {
+                id: 57,
+                chapterId: 4,
+                chapterName: "第4章 国会",
+                number: 57,
+                title: "第57条【会議の公開・秘密会・会議録】",
+                content: "① 両議院の会議は、公開とする。但し、出席議員の三分の二以上の多数で議決したときは、秘密会を開くことができる。\n② 両議院は、各々その会議の記録を保存し、秘密会の記録の中で特に秘密を要すると認められるもの以外のものは、これを公表し、且つ一般に頒布しなければならない。\n③ 出席議員の五分の一以上の要求があれば、各議員の表決は、これを会議録に記載しなければならない。",
+                summary: "国会の審議は原則公開であり、議事録の公表や投票記録が義務付けられています。",
+                tags: ["国会公開の原則", "秘密会", "会議録"]
+            },
+            {
+                id: 58,
+                chapterId: 4,
+                chapterName: "第4章 国会",
+                number: 58,
+                title: "第58条【役員選任・自律権・懲罰】",
+                content: "① 両議院は、各々その議長その他の役員を選任する。\n② 両議院は、各々その会議その他の手続及び内部の規律に関する規則を定め、又、院内の秩序を乱した議員を懲罰することができる。但し、議員を除名するには、出席議員の三分の二以上の多数による議決を必要とする。",
+                summary: "各議院が議長を選び規則を作る自主権（院内自律権）と、乱暴な議員の除名（2/3多数）を定めています。",
+                tags: ["議長選任", "院内自律権", "除名処分"]
+            },
+            {
+                id: 59,
+                chapterId: 4,
+                chapterName: "第4章 国会",
+                number: 59,
+                title: "第59条【法律案の可決・衆議院の優越】",
+                content: "① 法律案は、両議院で可決したとき法律となる。\n② 衆議院で可決し、参議院でこれと異なつた議決をした法律案は、衆議院で出席議員の三分の二以上の多数で再び可決したときは、法律となる。\n③ 前項の規定は、法律の定めるところにより、衆議院が、両議院の協議会を開くことを求めることを妨げない。\n④ 参議院が、衆議院の可決した法律案を受け取つた後、国会休会中の期間を除いて六十日以内に、議決しないときは、衆議院は、参議院がその法律案を否決したものとみなすことができる。",
+                summary: "法律の制定プロセスと、参議院と意見が異なる場合に衆議院が2/3で再可決できる「衆議院の優越」を規定。",
+                tags: ["法律案", "衆議院の優越", "再可決", "両院協議会"]
+            },
+            {
+                id: 60,
+                chapterId: 4,
+                chapterName: "第4章 国会",
+                number: 60,
+                title: "第60条【予算の先議及び衆議院の優越】",
+                content: "① 予算は、さきに衆議院に提出しなければならない。\n② 予算について、参議院で衆議院と異なつた議決をした場合に、法律の定めるところにより、両議院の協議会を開いても意見が一致しないとき、又は参議院が、衆議院の可決した予算を受け取つた後、国会休会中の期間を除いて三十日以内に、議決しないときは、衆議院の議決を国会の議決とする。",
+                summary: "予算審議は必ず衆議院が先に行い（先議権）、意見が合わない場合も衆議院の決定が優先されます。",
+                tags: ["予算", "衆議院先議権", "衆議院の優越", "30日ルール"]
+            },
+            {
+                id: 61,
+                chapterId: 4,
+                chapterName: "第4章 国会",
+                number: 61,
+                title: "第61条【条約の承認における衆議院の優越】",
+                content: "条約の承認については、前条第二項の規定を準用する。",
+                summary: "外国との条約の承認についても、予算と同様に衆議院の優越（30日ルール等）が適用されます。",
+                tags: ["条約の承認", "衆議院の優越"]
+            },
+            {
+                id: 62,
+                chapterId: 4,
+                chapterName: "第4章 国会",
+                number: 62,
+                title: "第62条【国政調査権】",
+                content: "両議院は、各々国政に関する調査を行い、これに関して、証人の出頭及び証言並びに記録の提出を求めることができる。",
+                summary: "両議院が国の政治をチェックするため、証人喚問や資料提出を求める強力な権限（国政調査権）です。",
+                tags: ["国政調査権", "証人喚問", "証拠提出"]
+            },
+            {
+                id: 63,
+                chapterId: 4,
+                chapterName: "第4章 国会",
+                number: 63,
+                title: "第63条【閣僚の国会出席の権利・義務】",
+                content: "内閣総理大臣その他の国務大臣は、両議院の一に議席を有すると有しないとにかかはらず、いつでも答弁及び説明のために議院に出席することができる。又、答弁又は説明のために出席を求められたときは、出席しなければならない。",
+                summary: "大臣は国会で発言する権利があり、国会から求められたら出席して答弁する義務を負います。",
+                tags: ["国務大臣", "国会答弁", "出席義務"]
+            },
+            {
+                id: 64,
+                chapterId: 4,
+                chapterName: "第4章 国会",
+                number: 64,
+                title: "第64条【弾劾裁判所】",
+                content: "① 国会は、罷免の訴追を受けた裁判官を裁判するため、両議院の議員で組織する弾劾裁判所を設ける。\n② 弾劾裁判所の組織に関する事項は、法律でこれを定める。",
+                summary: "非情な不正を行った裁判官をやめさせるため、国会議員で構成する「弾劾裁判所」を設置します。",
+                tags: ["弾劾裁判所", "裁判官罷免", "司法チェック"]
+            },
+            {
+                id: 65,
+                chapterId: 5,
+                chapterName: "第5章 内閣",
+                number: 65,
+                title: "第65条【行政権の帰属】",
+                content: "行政権は、内閣に帰属する。",
+                summary: "国の行政事務のすべての頂点は内閣であることを宣言しています。",
+                tags: ["行政権", "内閣", "三権分立"]
+            },
+            {
+                id: 66,
+                chapterId: 5,
+                chapterName: "第5章 内閣",
+                number: 66,
+                title: "第66条【内閣の組織・文民要件・連帯責任】",
+                content: "① 内閣は、首長たる内閣総理大臣及びその他の国務大臣でこれを組織する。\n② 内閣総理大臣その他の国務大臣は、文民でなければならない。\n③ 内閣は、行政権の行使について、国会に対して連帯して責任を負ふ。",
+                summary: "内閣の構成、軍人でない者「文民」に限る原則、および国会に対する連帯責任を規定しています。",
+                tags: ["内閣の組織", "文民統制", "シビリアンコントロール", "連帯責任"]
+            },
+            {
+                id: 67,
+                chapterId: 5,
+                chapterName: "第5章 内閣",
+                number: 67,
+                title: "第67条【内閣総理大臣の指名・衆議院の優越】",
+                content: "① 内閣総理大臣は、国会議員の中から、国会の議決でこれを指名する。この指名は、他のすべての案件に先だつて、これを行う。\n② 衆議院と参議院とが異なつた指名をした場合に、法律の定めるところにより、両議院の協議会を開いても意見が一致しないとき、又は衆議院が指名をした後、国会休会中の期間を除いて十日以内に、参議院が、指名を行ハないときは、衆議院の議決を国会の議決とする。",
+                summary: "首相は国会議員から指名され、指名争いでも衆議院の決定が優先されます（10日ルール）。",
+                tags: ["内閣総理大臣指名", "議院内閣制", "衆議院の優越"]
+            },
+            {
+                id: 68,
+                chapterId: 5,
+                chapterName: "第5章 内閣",
+                number: 68,
+                title: "第68条【国務大臣の任命と罷免】",
+                content: "① 内閣総理大臣は、国務大臣を任命する。但し、その過半数は、国会議員の中から選ばれなければならない。\n② 内閣総理大臣は、任意に国務大臣を罷免することができる。",
+                summary: "首相が大臣を任命・クビ（罷免）する権限を持ち、過半数は国会議員でなければなりません。",
+                tags: ["国務大臣任命", "罷免権", "閣僚"]
+            },
+            {
+                id: 69,
+                chapterId: 5,
+                chapterName: "第5章 内閣",
+                number: 69,
+                title: "第69条【内閣不信任決議の効果】",
+                content: "内閣は、衆議院で不信任の決議案を可決し、又は信任の決議案を否決したときは、十日以内に衆議院が解散されない限り、総辞職をしなければならない。",
+                summary: "衆議院で不信任案が通ったら、首相は「10日以内に解散」するか「内閣総辞職」を選択しなければなりません。",
+                tags: ["内閣不信任", "衆議院解散", "総辞職"]
+            },
+            {
+                id: 70,
+                chapterId: 5,
+                chapterName: "第5章 内閣",
+                number: 70,
+                title: "第70条【内閣の総辞職】",
+                content: "内閣総理大臣が欠けたとき、又は衆議院議員総選挙の後に初めて国会の召集があつたときは、内閣は、総辞職しなければならない。",
+                summary: "首相が死亡・辞任した場合や、総選挙後の特別国会が開かれたときは必ず内閣総辞職します。",
+                tags: ["総辞職", "特別国会"]
+            },
+            {
+                id: 71,
+                chapterId: 5,
+                chapterName: "第5章 内閣",
+                number: 71,
+                title: "第71条【総辞職後の職務継続】",
+                content: "前二条の場合においては、内閣は、新たに内閣総理大臣が任命されるまで引きつづきその職務を行う。",
+                summary: "総辞職しても、次の新首相が正式に任命されるまでは職務を継続します。",
+                tags: ["職務継続", "職務執行内閣"]
+            },
+            {
+                id: 72,
+                chapterId: 5,
+                chapterName: "第5章 内閣",
+                number: 72,
+                title: "第72条【内閣総理大臣の職務（指揮監督権）】",
+                content: "内閣総理大臣は、内閣を代表して閣議にかかつた議案を国会に提出し、一般行政事務について長官たる行政各部を指揮監督する。",
+                summary: "首相が内閣のリーダーとして議案を国会に出し、各省庁を指揮監督する権限を定めています。",
+                tags: ["内閣総理大臣", "指揮監督権", "閣議"]
+            },
+            {
+                id: 73,
+                chapterId: 5,
+                chapterName: "第5章 内閣",
+                number: 73,
+                title: "第73条【内閣の職務】",
+                content: "内閣は、他の一般行政事務のほか、左の事務を行う。\n一 法律を誠実に執行し、国政を処理すること。\n二 外交関係を処理すること。\n三 条約を締結すること。但し、事前に、時宜によつては事後に、国会の承認を経ることを必要とする。\n四 法律の定める基準に従ひ、官吏に関する事務を掌理すること。\n五 予算を作成して国会に提出すること。\n六 この憲法及び法律の規定を実施するために、政令を制定すること。但し、政令には、特に法律の委任がある場合を除いては、罰則を設けることができない。\n七 大赦、特赦、減刑、刑の執行の免除及び復権を決定すること。",
+                summary: "法律執行、外交、条約締結、予算作成、政令の制定など、内閣が行う主な実務を網羅しています。",
+                tags: ["内閣の職務", "外交", "条約締結", "政令制定", "予算作成"]
+            },
+            {
+                id: 74,
+                chapterId: 5,
+                chapterName: "第5章 内閣",
+                number: 74,
+                title: "第74条【法律・政令の署名及び連署】",
+                content: "法律及び政令には、すべて主務の国務大臣が署名し、内閣総理大臣が連署することを必要とする。",
+                summary: "公布される法律や政令には、担当大臣の署名と首相の連署が必要です。",
+                tags: ["署名", "連署", "責任の明確化"]
+            },
+            {
+                id: 75,
+                chapterId: 5,
+                chapterName: "第5章 内閣",
+                number: 75,
+                title: "第75条【国務大臣の特典（在任中の訴追）】",
+                content: "国務大臣は、その在任中、内閣総理大臣の同意がなければ、訴追されない。但し、これがため、訴追の権利は、害されない。",
+                summary: "現役の大臣は首相の同意がない限り逮捕・起訴されません（職務全うのため）。",
+                tags: ["訴追の特権", "首相の同意"]
+            },
+            {
+                id: 76,
+                chapterId: 6,
+                chapterName: "第6章 司法",
+                number: 76,
+                title: "第76条【司法権の帰属・裁判官の独立・特別裁判所の禁止】",
+                content: "① すべて司法権は、最高裁判所及び法律の定めるところにより設置される下級裁判所に帰属する。\n② 特別裁判所は、これを設置することができない。行政機関は、終審として裁判を行うことができない。\n③ すべて裁判官は、その良心に従ひ独立してその職権を行い、この憲法及び法律にのみ拘束される。",
+                summary: "裁判を行う司法権の独立、軍事法廷のような特別裁判所の禁止、裁判官の良心による独立を定めています。",
+                tags: ["司法権の独立", "裁判官の独立", "特別裁判所の禁止"]
+            },
+            {
+                id: 77,
+                chapterId: 6,
+                chapterName: "第6章 司法",
+                number: 77,
+                title: "第77条【最高裁判所の規則制定権】",
+                content: "① 最高裁判所は、訴訟に関する手続、弁護士、裁判所の内部規律及び司法事務処理に関する事項について、規則を定める権限を有する。\n② 検察官は、最高裁判所の定める規則に従ハなければならない。\n③ 最高裁判所は、下級裁判所の規則を定める権限を、下級裁判所に委任することができる。",
+                summary: "最高裁判所が自ら裁判の手続きや弁護士に関するルール（最高裁規則）を決める権限です。",
+                tags: ["最高裁判所", "規則制定権", "司法の独立"]
+            },
+            {
+                id: 78,
+                chapterId: 6,
+                chapterName: "第6章 司法",
+                number: 78,
+                title: "第78条【裁判官の身分保障】",
+                content: "裁判官は、裁判によつて分限の裁判で心身の故障のために職務を執ることができないと決定された場合を除いては、公の弾劾による場合を除いては、罷免されない。裁判官の懲戒処分は、行政機関がこれを行うことはできない。",
+                summary: "政治的圧力を受けないよう、裁判官は弾劾裁判か病気等の場合を除き辞めさせられません。",
+                tags: ["身分保障", "裁判官罷免", "弾劾"]
+            },
+            {
+                id: 79,
+                chapterId: 6,
+                chapterName: "第6章 司法",
+                number: 79,
+                title: "第79条【最高裁判所の裁判官・国民審査・定年・報酬】",
+                content: "① 最高裁判所は、その長たる裁判官及び法律の定める員のその他の裁判官でこれを構成し、その長たる裁判官以外の裁判官は、内閣でこれを指名する。\n② 最高裁判所の裁判官の任命は、その任命後初めて行ハれる衆議院議員総選挙の際国民の審査に付し、その後十年を経過した後初めて行ハれる衆議院議員総選挙の際さらに審査に付し、その後も同様とする。\n③ 前項の場合において、投票者の多数が裁判官の罷免を可とするときは、その裁判官は、罷免される。\n④ 審査に関する事項は、法律でこれを定める。\n⑤ 最高裁判所の裁判官は、法律の定める年齢に達した時に退官する。\n⑥ 最高裁判所の裁判官は、すべて定期に相当額の報酬を受ける。この報酬は、在任中、これを減額することができない。",
+                summary: "最高裁裁判官の任命、衆議院選挙と同時に行われる「最高裁裁判官国民審査」、給与減額禁止などを規定。",
+                tags: ["最高裁判所裁判官", "国民審査", "定年", "減額禁止"]
+            },
+            {
+                id: 80,
+                chapterId: 6,
+                chapterName: "第6章 司法",
+                number: 80,
+                title: "第80条【下級裁判所の裁判官・任期・定年・報酬】",
+                content: "① 下級裁判所の裁判官は、最高裁判所の指名した者の名簿によつて、内閣でこれを任命する。その裁判官は、任期を十年とし、再任されることができる。但し、法律の定める年齢に達した時に退官する。\n② 下級裁判所の裁判官は、すべて定期に相当額の報酬を受ける。この報酬は、在任中、これを減額することができない。",
+                summary: "地裁・高裁などの下級裁判所裁判官の任期（10年・再任可）や報酬保障についてです。",
+                tags: ["下級裁判所", "任期10年", "再任"]
+            },
+            {
+                id: 81,
+                chapterId: 6,
+                chapterName: "第6章 司法",
+                number: 81,
+                title: "第81条【最高裁判所の違憲審査権（憲法の番人）】",
+                content: "最高裁判所は、一切の法律、命令、規則又は処分が憲法に適合するかしないかを決定する権限を有する終審裁判所である。",
+                summary: "【憲法の番人】最高裁判所が、法律や政府の行為が憲法違反でないかを最終判断する「違憲審査権」を定めています。",
+                tags: ["違憲審査権", "憲法の番人", "違憲判決", "最高裁判所", "憲法81条"]
+            },
+            {
+                id: 82,
+                chapterId: 6,
+                chapterName: "第6章 司法",
+                number: 82,
+                title: "第82条【裁判の公開】",
+                content: "① 裁判の対審及び判決は、公開の法廷でこれを行う。\n② 裁判所が、裁判官の全員一致で、公の秩序又は善良の風俗を害するおそれがあると決した場合には、対審は、公開しないでこれを行うことができる。但し、政治犯罪、出版に関する犯罪又はこの憲法第三章で保障する国民の権利が問題となつてゐる事件の対審は、常にこれを公開しなければならない。",
+                summary: "裁判は原則として誰でも傍聴できる公開法廷で行わなければなりません。",
+                tags: ["裁判の公開", "公開法廷", "対審"]
+            },
+            {
+                id: 83,
+                chapterId: 7,
+                chapterName: "第7章 財政",
+                number: 83,
+                title: "第83条【財政処理の基本原則（財政民主主義）】",
+                content: "国の財政を処理する権限は、国会の議決に基いて、これを行使しなければならない。",
+                summary: "【財政民主主義】税金の使い方や国の予算決定はすべて国民の代表である国会の議決に基づかなければなりません。",
+                tags: ["財政民主主義", "国会の議決", "税金"]
+            },
+            {
+                id: 84,
+                chapterId: 7,
+                chapterName: "第7章 財政",
+                number: 84,
+                title: "第84条【課税権の法律主義（租税法律主義）】",
+                content: "新たに租税を課し、又は現行の租税を変更するには、法律又は法律の定める条件によらなければならない。",
+                summary: "【租税法律主義】新しい税金を課したり税率を変えるには、必ず法律を作らなければならない原則です。",
+                tags: ["租税法律主義", "課税", "法律主義"]
+            },
+            {
+                id: 85,
+                chapterId: 7,
+                chapterName: "第7章 財政",
+                number: 85,
+                title: "第85条【国費の支出及び国の債務負担】",
+                content: "国費を支出し、又は国が債務を負担するには、国会の議決に基くことを必要とする。",
+                summary: "国がお金を使ったり国債などを発行して借金をするには、国会の承認が必要です。",
+                tags: ["国費支出", "国債", "国会の議決"]
+            },
+            {
+                id: 86,
+                chapterId: 7,
+                chapterName: "第7章 財政",
+                number: 86,
+                title: "第86条【予算の作成・提出・審議】",
+                content: "内閣は、毎会計年度の予算を作成し、国会に提出して、その審議を受け議決を経なければならない。",
+                summary: "内閣が毎年の予算案を作成し、国会に提出して承認を得る義務を定めています。",
+                tags: ["予算案", "会計年度", "国会承認"]
+            },
+            {
+                id: 87,
+                chapterId: 7,
+                chapterName: "第7章 財政",
+                number: 87,
+                title: "第87条【予備費】",
+                content: "① 予見し難い予算の不足に充てるため、国会の議決に基いて予備費を設け、内閣の責任でこれを支出することができる。\n② すべて予備費の支出については、内閣は、事後に国会の承諾を得なければならない。",
+                summary: "災害など予期せぬ出費のために予備費を用意し、使った後は国会の事後承諾が必要です。",
+                tags: ["予備費", "事後承諾", "災害対応"]
+            },
+            {
+                id: 88,
+                chapterId: 7,
+                chapterName: "第7章 財政",
+                number: 88,
+                title: "第88条【皇室財産・皇室費用】",
+                content: "すべて皇室財産は、国に帰属する。すべて皇室の費用は、予算に計上して国会の議決を経なければならない。",
+                summary: "皇室の財産は国の所有であり、皇室の活動費用は国の予算として国会で決めます。",
+                tags: ["皇室財産", "国家帰属", "皇室費用"]
+            },
+            {
+                id: 89,
+                chapterId: 7,
+                chapterName: "第7章 財政",
+                number: 89,
+                title: "第89条【公金の禁じられた支出（政教分離・私学助成の論点）】",
+                content: "公金その他の公の財産は、宗教上の組織若しくは上の支配に属しない慈善、教育若しくは博愛の事業に対し、これを支出し、又はその利用に供してはならない。",
+                summary: "宗教団体への公金支出禁止と、公の支配に属さない慈善・教育事業への公金援助制限を規定しています。",
+                tags: ["公金支出禁止", "政教分離", "私学助成"]
+            },
+            {
+                id: 90,
+                chapterId: 7,
+                chapterName: "第7章 財政",
+                number: 90,
+                title: "第90条【決算審査・会計検査院】",
+                content: "① 国の収入支出の決算は、すべて毎年会計検査院がこれを検査し、内閣は、次の年度に、この検査報告とともに、これを国会に提出しなければならない。\n② 会計検査院の組織及び権限は、法律でこれを定める。",
+                summary: "税金が正しく使われたかを独立した機関「会計検査院」がチェックし国会に報告します。",
+                tags: ["決算", "会計検査院", "税金の使途チェック"]
+            },
+            {
+                id: 91,
+                chapterId: 7,
+                chapterName: "第7章 財政",
+                number: 91,
+                title: "第91条【財政状況の報告】",
+                content: "内閣は、国会及び国民に対し、定期に、少くとも毎年一回、国の財政状況について報告しなければならない。",
+                summary: "内閣は少なくとも年1回、国の財務・財政状況を国民と国会に報告する義務があります。",
+                tags: ["財政報告", "ディスクロージャー"]
+            },
+            {
+                id: 92,
+                chapterId: 8,
+                chapterName: "第8章 地方自治",
+                number: 92,
+                title: "第92条【地方自治の基本原則】",
+                content: "地方公共団体の組織及び運営に関する事項は、地方自治の本旨に基いて、法律でこれを定める。",
+                summary: "都道府県や市区町村の運営は、住民自治と団体自治という「地方自治の本旨」に基づいて行われます。",
+                tags: ["地方自治の本旨", "住民自治", "団体自治"]
+            },
+            {
+                id: 93,
+                chapterId: 8,
+                chapterName: "第8章 地方自治",
+                number: 93,
+                title: "第93条【地方公共団体の機関・直接選挙】",
+                content: "① 地方公共団体には、法律の定めるところにより、議事機関として議会を設置する。\n② 地方公共団体の長、その議会の議員及び法律の定めるその他の公吏は、その地方公共団体の住民が、直接これを選挙する。",
+                summary: "地方自治体に議会を置き、知事・市町村長や地方議員は住民が直接選挙で選ぶことを義務付けています。",
+                tags: ["地方議会", "知事・市長選挙", "直接選挙"]
+            },
+            {
+                id: 94,
+                chapterId: 8,
+                chapterName: "第8章 地方自治",
+                number: 94,
+                title: "第94条【地方公共団体の権能（条例制定権）】",
+                content: "地方公共団体は、その財産を管理し、事務を処理し、及び行政を執行する権能を有し、法律の範囲内で条例を制定することができる。",
+                summary: "自治体は自らの財産・事務を処理し、国の法律に反しない範囲で自前のルール「条例」を作ることができます。",
+                tags: ["条例制定権", "自治権", "地方事務"]
+            },
+            {
+                id: 95,
+                chapterId: 8,
+                chapterName: "第8章 地方自治",
+                number: 95,
+                title: "第95条【一の地方公共団体のみに適用される特別法（住民投票）】",
+                content: "一の地方公共団体のみに適用される特別法は、法律の定めるところにより、その地方公共団体の住民の投票においてその過半数の同意を得なければ、国会は、これを制定することができない。",
+                summary: "特定の1つの自治体だけに適用される法律（単行法）を作る場合、その地域の住民投票での過半数同意が必要です。",
+                tags: ["地方特別法", "住民投票", "過半数同意"]
+            },
+            {
+                id: 96,
+                chapterId: 9,
+                chapterName: "第9章 改正",
+                number: 96,
+                title: "第96条【憲法改正の手続・国民投票・公布】",
+                content: "① この憲法の改正は、各議院の総議員の三分の二以上の賛成で、国会が、これを発議し、国民に提案してその承認を経なければならない。この承認には、特別の国民投票又は国会の定める選挙の際行はれる投票において、その過半数の賛成を必要とする。\n② 憲法改正について前項の承認を経たときは、天皇は、国民の名で、この憲法と一体を成するものとして、直ちにこれを公布する。",
+                summary: "【憲法改正】衆参両院の「総議員の3分の2以上」の発議と、「国民投票での過半数の賛成」という厳格な手続き（硬性憲法）を規定。",
+                tags: ["憲法改正", "3分の2以上", "国民投票", "発議", "憲法96条", "硬性憲法"]
+            },
+            {
+                id: 97,
+                chapterId: 10,
+                chapterName: "第10章 最高法規",
+                number: 97,
+                title: "第97条【基本的人権の由来・最高法規性】",
+                content: "この憲法が日本国民に保障する基本的人権は、人類の多年にわたる自由獲得の努力の成果であつて、これらの権利は、過去幾多の試練に堪へ、現在及び将来の国民に対し、侵すことのできない永久の権利として信託されたものである。",
+                summary: "人権が歴史的試練を経て獲得された人類共通の財産であり、憲法が最高法規とされる倫理的基盤です。",
+                tags: ["基本的人権", "人類の努力", "最高法規"]
+            },
+            {
+                id: 98,
+                chapterId: 10,
+                chapterName: "第10章 最高法規",
+                number: 98,
+                title: "第98条【最高法規・条約及び国際法規の遵守】",
+                content: "① この憲法は、国の最高法規であつて、その条規に反する法律、命令、詔勅及び国政に関するその他の行為の全部又は一部は、その効力を有しない。\n② 日本国が締結した条約及び確立された国際法規は、これを誠実に遵守することを必要とする。",
+                summary: "憲法が国のあらゆる法令より優位に立つ「最高法規」であることと、条約遵守義務を定めています。",
+                tags: ["最高法規", "違憲無効", "条約遵守"]
+            },
+            {
+                id: 99,
+                chapterId: 10,
+                chapterName: "第10章 最高法規",
+                number: 99,
+                title: "第99条【憲法尊重擁護の義務】",
+                content: "天皇又は摂政及び国務大臣、国会議員、裁判官その他の公務員は、この憲法を尊重し擁護する義務を負ふ。",
+                summary: "【立憲主義】権力者（天皇・大臣・議員・公務員など）こそが憲法を守り、暴走を防がなければならない義務です。",
+                tags: ["憲法尊重擁護の義務", "立憲主義", "公務員の義務"]
+            },
+            {
+                id: 100,
+                chapterId: 11,
+                chapterName: "第11章 補則",
+                number: 100,
+                title: "第100条【施行期日・準備行為】",
+                content: "① この憲法は、公布の日から起算して六箇月を経過した日から、これを施行する。\n② この憲法を施行するために必要な法律の制定、参議院議員の選挙及び国会召集の手続並びにこの憲法を施行するために必要な準備行為は、前項の期日前に、これを行うことができる。",
+                summary: "憲法の施行日（昭和22年5月3日）と施行準備について定めた規定です。",
+                tags: ["施行期日", "憲法記念日", "補則"]
+            },
+            {
+                id: 101,
+                chapterId: 11,
+                chapterName: "第11章 補則",
+                number: 101,
+                title: "第101条【参議院未成立時の貴族院存続等】",
+                content: "この憲法施行の際、参議院がまだ成立してゐないときは、参議院が成立するまでの間、帝国議会貴族院は、従来の例によりその職務を行う。",
+                summary: "新憲法施行時に参議院ができるまでの経過措置（旧貴族院の暫定利用）です。",
+                tags: ["経過措置", "貴族院", "補則"]
+            },
+            {
+                id: 102,
+                chapterId: 11,
+                chapterName: "第11章 補則",
+                number: 102,
+                title: "第102条【最初の参議院議員の任期】",
+                content: "この憲法による最初の参議院議員の任期については、その半数の者の任期は、第四十六条の規定にかハらず、三年とする。その議員は、法律の定めるところにより、これを定める。",
+                summary: "最初の参議院において、3年ごとの半数改選サイクルを作るための特例措置です。",
+                tags: ["参議院任期特例", "経過措置"]
+            },
+            {
+                id: 103,
+                chapterId: 11,
+                chapterName: "第11章 補則",
+                number: 103,
+                title: "第103条【従前の公務員の地位】",
+                content: "この憲法が施行される際、現に在職する国務大臣、衆議院議員及び裁判官その他の公務員で、その地位に相応する新しい地位がこの憲法で認められてゐる者は、法律で特別の定めをした場合を除いては、この憲法施行のため、当然にはその職を失ふことはない。但し、この憲法によつて新しい後任者が選挙又は任命されたときは、当然その職を失ふ。",
+                summary: "旧憲法下の公務員が新憲法へスムーズに移行するための経過措置規定です。",
+                tags: ["経過措置", "公務員の引き継ぎ"]
+            }
+        ];
+
+        // フィルター適用後の条文リスト
+        const filteredArticles = computed(() => {
+            return articles.filter(art => {
+                // タブフィルター（お気に入り）
+                if (activeTab.value === 'bookmarks') {
+                    if (!bookmarks.value.includes(art.id)) return false;
+                }
+
+                // 章フィルター
+                if (selectedChapter.value !== null && art.chapterId !== selectedChapter.value) {
+                    return false;
+                }
+
+                // キーワード検索フィルター
+                if (searchQuery.value.trim() !== '') {
+                    const q = searchQuery.value.trim().toLowerCase();
+                    const matchTitle = art.title.toLowerCase().includes(q);
+                    const matchContent = art.content.toLowerCase().includes(q);
+                    const matchSummary = art.summary && art.summary.toLowerCase().includes(q);
+                    const matchTags = art.tags.some(t => t.toLowerCase().includes(q));
+                    const matchChapter = art.chapterName.toLowerCase().includes(q);
+
+                    return matchTitle || matchContent || matchSummary || matchTags || matchChapter;
+                }
+
+                return true;
+            });
+        });
+
+        // テキストハイライト関数
+        const highlightText = (text) => {
+            if (!searchQuery.value.trim()) return text;
+            const query = searchQuery.value.trim();
+            // エスケープ処理
+            const safeQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const regex = new RegExp(`(${safeQuery})`, 'gi');
+            return text.replace(regex, '<mark class="search-highlight">$1</mark>');
+        };
+
+        // 章選択
+        const selectChapter = (chId) => {
+            selectedChapter.value = chId;
+            activeTab.value = 'all';
+        };
+
+        // フィルターリセット
+        const resetFilters = () => {
+            searchQuery.value = '';
+            selectedChapter.value = null;
+            activeTab.value = 'all';
+        };
+
+        // 章名取得
+        const getChapterName = (chId) => {
+            const ch = chapters.find(c => c.id === chId);
+            return ch ? ch.name : '';
+        };
+
+        // お気に入り機能
+        const isBookmarked = (id) => bookmarks.value.includes(id);
+
+        const toggleBookmark = (id) => {
+            if (isBookmarked(id)) {
+                bookmarks.value = bookmarks.value.filter(bId => bId !== id);
+                showToast('お気に入りから削除しました');
+            } else {
+                bookmarks.value.push(id);
+                showToast('お気に入りに追加しました');
+            }
+            saveBookmarks();
+        };
+
+        const saveBookmarks = () => {
+            localStorage.setItem('constitution_bookmarks', JSON.stringify(bookmarks.value));
+        };
+
+        const loadBookmarks = () => {
+            const saved = localStorage.getItem('constitution_bookmarks');
+            if (saved) {
+                try {
+                    bookmarks.value = JSON.parse(saved);
+                } catch(e){}
+            }
+        };
+
+        // 解説のアコーディオン
+        const isSummaryOpen = (id) => expandAll.value || openSummaries.value.includes(id);
+
+        const toggleSummary = (id) => {
+            if (openSummaries.value.includes(id)) {
+                openSummaries.value = openSummaries.value.filter(sId => sId !== id);
+            } else {
+                openSummaries.value.push(id);
+            }
+        };
+
+        // ランダム表示機能
+        const getRandomArticle = () => {
+            resetFilters();
+            const randomIndex = Math.floor(Math.random() * articles.length);
+            const targetArticle = articles[randomIndex];
+            searchQuery.value = targetArticle.title.split('【')[0]; // 例: "第9条"
+            showToast(`「${targetArticle.title}」を表示します`);
+        };
+
+        // コピー機能
+        const copyArticle = (article) => {
+            const textToCopy = `${article.title}\n${article.content}\n\n(出典: 日本国憲法)`;
+            
+            // クリップボード書き込み
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(textToCopy);
+            } else {
+                // フォールバック
+                const textArea = document.createElement("textarea");
+                textArea.value = textToCopy;
+                textArea.style.position = "fixed";
+                textArea.style.left = "-999999px";
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                } catch (error) {
+                    console.error('Copy failed', error);
+                }
+                document.body.removeChild(textArea);
+            }
+
+            showToast(`${article.title} をコピーしました`);
+        };
+
+        // トースト表示
+        const showToast = (msg) => {
+            toastMessage.value = msg;
+            setTimeout(() => {
+                toastMessage.value = '';
+            }, 2500);
+        };
+
+        // テーマCSSクラス計算
+        const themeClass = computed(() => {
+            if (theme.value === 'dark') return 'bg-slate-950 text-slate-100 theme-dark';
+            if (theme.value === 'sepia') return 'theme-sepia';
+            return 'bg-slate-100 text-slate-800';
+        });
+
+        // フォントサイズクラス
+        const fontClass = computed(() => {
+            if (fontSize.value === 'sm') return 'text-sm';
+            if (fontSize.value === 'lg') return 'text-lg';
+            return 'text-base';
+        });
+
+        onMounted(() => {
+            loadBookmarks();
+        });
+
+        return {
+            searchQuery,
+            selectedChapter,
+            activeTab,
+            theme,
+            fontSize,
+            bookmarks,
+            openSummaries,
+            expandAll,
+            toastMessage,
+            chapters,
+            articles,
+            filteredArticles,
+            highlightText,
+            selectChapter,
+            resetFilters,
+            getChapterName,
+            isBookmarked,
+            toggleBookmark,
+            isSummaryOpen,
+            toggleSummary,
+            getRandomArticle,
+            copyArticle,
+            themeClass,
+            fontClass
+        };
+    }
+}).mount('#app');
+</script>
+
+</body>
+</html>
